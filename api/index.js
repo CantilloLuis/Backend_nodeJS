@@ -1,16 +1,15 @@
-// api/index.js
+var express = require("express");
 const mongoose = require('mongoose');
-const express = require('express');
-const cors = require('cors');
-const morgan = require('morgan');
 require('dotenv').config();
+const cors = require("cors");
+var app = express();
+const morgan = require("morgan");
+app.use(morgan("tiny"))
 
-const app = express();
-
-// Configuración de CORS
+// Asegúrate de incluir el dominio de producción en la configuración de CORS
 const allowedOrigins = [
-    'https://projecto-de-musica-react-node-js.vercel.app',
-    'http://localhost:3000'
+    'https://projecto-de-musica-react-node-js.vercel.app', // Dominio del frontend en producción
+    'http://localhost:3000' // Opcional, para pruebas locales
 ];
 
 app.use(cors({
@@ -21,56 +20,30 @@ app.use(cors({
             callback(new Error('Not allowed by CORS'));
         }
     },
-    credentials: true
+    credentials: true // Si usas cookies o cabeceras con credenciales
 }));
 
-app.use(morgan("tiny"));
+const musicRoutes = require("./routes/music");
+const userRoutes = require("./routes/user");
+
+
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Importar rutas
-const musicRoutes = require('../routes/music');
-const userRoutes = require('../routes/user');
+// codigo donde realizamos la conexion con mongo atlas
+mongoose
+    .connect(process.env.URL_MONGODB, { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(() => {
+        console.log("Estamos conectados");
 
-// Conectar a MongoDB
-let cachedDb = null;
-
-async function connectToDatabase() {
-    if (cachedDb) {
-        return cachedDb;
-    }
-    const db = await mongoose.connect(process.env.URL_MONGODB, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true
     });
-    cachedDb = db;
-    return db;
-}
 
-// Middleware para asegurar la conexión a la DB
-app.use(async (req, res, next) => {
-    try {
-        await connectToDatabase();
-        next();
-    } catch (error) {
-        next(error);
-    }
-});
-
-// Rutas
+//Ruta de la api de musica
 app.use('/api/music', musicRoutes);
+
+//Ruta de la api de login
 app.use('/api/user', userRoutes);
 
-// Ruta de prueba
-app.get('/api/test', (req, res) => {
-    res.json({ message: 'API is working!' });
-});
 
-// Manejo de errores
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ message: 'Something went wrong!' });
-});
-
-// Exportar para Vercel
 module.exports = app;
